@@ -2,56 +2,64 @@ package events
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"github.com/nazmalik/edinburgh-events/chatgpt"
 	"io"
-	"strconv"
+	"log"
+	"os"
 	"strings"
 )
 
 const (
 	// 700 gets to event #11 of 23
-	maxTokens          = 4000
+	maxTokens          = 4096
 	csvExampleFilename = "events.csv"
 )
 
 // Fetch takes the text of a page and hits the ChatGPT API to extract event data
-func Fetch(pageText string) error {
+func Fetch(pageText string, venueName string, url string) ([]Event, error) {
 	preprocessingRsp, err := chatgpt.SendPrompt(getPreprocessingPrompt(pageText), maxTokens)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	rsp, err := chatgpt.SendPrompt(getPrompt(preprocessingRsp.FirstChoiceOutput()), maxTokens)
+	jsonRsp, err := chatgpt.SendPrompt(getJSONPrompt(preprocessingRsp.FirstChoiceOutput()), maxTokens)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	csvString := rsp.FirstChoiceOutput()
+	fmt.Println(jsonRsp.FirstChoiceOutput())
 
-	if err := writeToCSV(csvString, csvExampleFilename); err != nil {
-		return fmt.Errorf("error writing to CSV file: %v", err)
-	}
-
-	fmt.Println("Written .csv 🎉")
-
-	events, err := parseCSVFromString(csvString)
+	events, err := getEventsFromJSON(jsonRsp.FirstChoiceOutput())
 	if err != nil {
-		return fmt.Errorf("error parsing CSV content: %v", err)
+		return nil, fmt.Errorf("error parsing JSON content: %v", err)
 	}
 
-	fmt.Println("Parsed events 🎉")
-
-	// Print the parsed events to verify
-	for _, event := range events {
-		fmt.Printf("%+v\n", event)
+	enrichedEvents := make([]Event, len(events))
+	for i, event := range events {
+		event.Venue = venueName
+		event.URL = url
+		enrichedEvents[i] = event
 	}
 
-	return nil
+	// Convert the events to JSON
+	jsonData, err := json.Marshal(enrichedEvents)
+	if err != nil {
+		return nil, fmt.Errorf("error converting events to JSON: %v", err)
+	}
+
+	jsonFile := os.Getenv("FRONTEND_EVENTS_JSON_PATH")
+	if err := os.WriteFile(jsonFile, jsonData, 0644); err != nil {
+		log.Fatalf("Error writing events JSON file: %v", err)
+	}
+
+	return enrichedEvents, nil
+
 }
 
-// parseCSVFromString takes a CSV-formatted string and returns an array of Event structs
-func parseCSVFromString(csvString string) ([]Event, error) {
+// getEventsFromCSV takes a CSV-formatted string and returns an array of Event structs
+func getEventsFromCSV(csvString string, venueName string, url string) ([]Event, error) {
 	reader := csv.NewReader(strings.NewReader(csvString))
 	var events []Event
 	isHeaderRecord := true
@@ -70,12 +78,6 @@ func parseCSVFromString(csvString string) ([]Event, error) {
 			continue
 		}
 
-		price, err := strconv.Atoi(record[6])
-		if err != nil {
-			fmt.Printf("Error converting price for event %s: %v\n", record[0], err)
-			continue // Skip this record
-		}
-
 		event := Event{
 			Name:        record[0],
 			RecursOn:    record[1],
@@ -83,7 +85,7 @@ func parseCSVFromString(csvString string) ([]Event, error) {
 			StartTime:   record[3],
 			EndTime:     record[4],
 			Description: record[5],
-			Price:       price,
+			Price:       record[6],
 		}
 
 		events = append(events, event)

@@ -14,7 +14,7 @@ For each column, adhere to the following examples:
    - Example: "Every Tuesday"
    - Example for one-time event: ""
    
-3. Date: Provide the specific date in YYYY-MM-DD format, leave blank if the event recurs.
+3. Date: Provide the specific date in YYYY-MM-DD format, leave blank if the event recurs. Assume 2024 if year is not clear.
    - Example for one-time event: "2024-01-21" for Sun 21st Jan
    - Example for a recurring event: ""
    - Invalid: "Wed 10th Dec" (correct format: "2024-12-10")
@@ -23,30 +23,25 @@ For each column, adhere to the following examples:
    - Example: "19:00" for 7pm
    - Example: "14:00" for 2pm-4pm (EndTime would be "16:00")
    - Example if not specified: ""
-
    
 5. EndTime: Provide the ending time in 24-hour HH:MM format, leave blank if not specified.
    - Example: "21:00"
    - Example if not specified: ""
    
-6. Description: A concise summary of the event, not including price or time.
-   - Example: "Jazz & Blues"
-   - Example: "Folk Music"
+6. Description: A concise summary of the event. 
+   - Example: "Jazz & Blues", "Stand-up Comedy", "Folk Music", "Art Workshop", "Swing Dancing Social"
    
 7. Price: The numeric value in pennies, '0' if free. Do not include currency symbols.
    - Example: "1000" for £10
    - Example for a free event: "0"
 
 Here's how a correctly formatted CSV row would look for a recurring event:
-
 "Pub Quiz with John Doe", "Every Tuesday", "", "20:00", "22:00", "Trivia Night", "500"
 
 And for a one-time event:
-
 "New Year's Eve Gala", "", "2024-12-31", "20:00", "01:00", "Gala Event", "7500"
 
 Notes: 
-- If a field's data is ambiguous or doesn't fit the specified format, exclude it from the output.
 - One of Date or RecursOn must be present
 - For events with multiple dates, each date should be a separate record with the same Name and Description.
 - Ensure that each data point is placed in the appropriate column.

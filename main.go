@@ -10,6 +10,7 @@ import (
 
 func main() {
 	url := "https://leithdepot.com/events.html"
+	venueName := "Leith Depot"
 
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
@@ -29,8 +30,11 @@ func main() {
 		return
 	}
 
-	if err := events.Fetch(text); err != nil {
+	fetchedEvents, err := events.Fetch(text, venueName, url)
+	if err != nil {
 		fmt.Println("Error fetching events:", err)
 		return
 	}
+
+	fmt.Println(fetchedEvents)
 }
