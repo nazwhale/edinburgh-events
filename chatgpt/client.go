@@ -30,6 +30,10 @@ type Rsp struct {
 	Error   *ErrorResponse `json:"error,omitempty"` // Add an error field to capture error responses
 }
 
+func (r Rsp) FirstChoiceOutput() string {
+	return r.Choices[0].Message.Content
+}
+
 type Choice struct {
 	Index        int     `json:"index"`
 	Message      Message `json:"message"`
@@ -52,13 +56,17 @@ type ErrorResponse struct {
 }
 
 const (
-	model3dot5Turbo    = "gpt-3.5-turbo"
+	model3dot5Turbo    = "gpt-3.5-turbo-0125"
 	roleUser           = "user"
 	roleAssistant      = "assistant"
-	FinishReasonLength = "length"
+	finishReasonLength = "length"
 )
 
 func SendPrompt(prompt string, maxTokens int) (*Rsp, error) {
+	fmt.Println("Sending prompt to ChatGPT API 🚀")
+	fmt.Println(prompt)
+	fmt.Println()
+
 	message := Message{
 		Role:    roleUser,
 		Content: prompt,
@@ -93,14 +101,14 @@ func SendPrompt(prompt string, maxTokens int) (*Rsp, error) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	rsp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error sending request to ChatGPT API: %w", err)
 	}
-	defer resp.Body.Close()
+	defer rsp.Body.Close()
 
 	// Reading and handling the response
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
@@ -113,10 +121,17 @@ func SendPrompt(prompt string, maxTokens int) (*Rsp, error) {
 	// Check if the API response contains an error
 	if response.Error != nil {
 		return nil, fmt.Errorf("API Error: %s - %s", response.Error.Code, response.Error.Message)
-
 	}
 
 	fmt.Printf("📃Raw Response:\n%s\n", string(body))
+
+	finishReason := response.Choices[0].FinishReason
+	if finishReason == finishReasonLength {
+		fmt.Println("Response was truncated due to length 🐍")
+	}
+
+	// Print usage info
+	fmt.Printf("\n🇹🇰\nTokens used: %d\nPrompt: %d\nCompletion: %d\n\n", response.Usage.TotalTokens, response.Usage.PromptTokens, response.Usage.CompletionTokens)
 
 	return &response, nil
 }
